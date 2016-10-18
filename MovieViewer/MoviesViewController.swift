@@ -9,17 +9,22 @@ import AFNetworking
 import UIKit
 import AASquaresLoading
 
-class MoviesViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+class MoviesViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UISearchBarDelegate {
 
     @IBOutlet weak var tableView: UITableView!
+    @IBOutlet weak var searchBar: UISearchBar!
     var movies: [NSDictionary]?
     var endpoint: String!
+    var filteredData: [NSDictionary]!
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
         tableView.dataSource = self
         tableView.delegate = self
+        
+        self.filteredData = self.movies
+        searchBar.delegate = self
         
         self.showRefreshControl()
     }
@@ -45,51 +50,47 @@ class MoviesViewController: UIViewController, UITableViewDataSource, UITableView
     }
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        
-        if let movies = movies {
-            return movies.count
-        }
-        else {
-            return 0
-        }
+        return self.filteredData?.count ?? 0
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         
         let cell = tableView.dequeueReusableCell(withIdentifier: "movieCell", for: indexPath) as! MovieTableViewCell
         
-        let movie = movies?[indexPath.row]
-        let title = movie?["title"] as! String
-        let overview = movie?["overview"] as! String
-        
-        let basePosterURL = "https://image.tmdb.org/t/p/w500/"
-        if let posterPath = movie?["poster_path"] as? String {
-            let imageURL = URL(string: basePosterURL + posterPath)
+        if let filteredData = self.filteredData {
+            let movie = filteredData[indexPath.row]
+            let title = movie["title"] as! String
+            let overview = movie["overview"] as! String
             
-            let imageRequest = URLRequest(url: imageURL!)
-            cell.posterImageView.setImageWith(imageRequest,
-                                              placeholderImage: nil,
-                                              success: { (imageRequest, imageResponse, image) in
-                                                
-                                                if imageResponse != nil {
-                                                    cell.posterImageView.alpha = 0
-                                                    cell.posterImageView.image = image
-                                                    UIView.animate(withDuration: 3.5, animations: {
-                                                        cell.posterImageView.alpha = 1.0
-                                                    })
-                                                }
-                                                else {
-                                                    cell.posterImageView.image = image
-                                                }
-                }, failure: { (imageRequest, imageResponse, error) in
-                    //TODO: show the default error for image "No Image"
-                    cell.posterImageView.image = nil
-            })
+            let basePosterURL = "https://image.tmdb.org/t/p/w500/"
+            if let posterPath = movie["poster_path"] as? String {
+                let imageURL = URL(string: basePosterURL + posterPath)
+                
+                let imageRequest = URLRequest(url: imageURL!)
+                cell.posterImageView.setImageWith(imageRequest,
+                                                  placeholderImage: nil,
+                                                  success: { (imageRequest, imageResponse, image) in
+                                                    
+                                                    if imageResponse != nil {
+                                                        cell.posterImageView.alpha = 0
+                                                        cell.posterImageView.image = image
+                                                        UIView.animate(withDuration: 3.5, animations: {
+                                                            cell.posterImageView.alpha = 1.0
+                                                        })
+                                                    }
+                                                    else {
+                                                        cell.posterImageView.image = image
+                                                    }
+                    }, failure: { (imageRequest, imageResponse, error) in
+                        //TODO: show the default error for image "No Image"
+                        cell.posterImageView.image = nil
+                })
+            }
+
+            cell.titleLabel.text = title
+            cell.overviewLabel.text = overview
+            
         }
-        
-        cell.titleLabel.text = title
-        cell.overviewLabel.text = overview
-        
         return cell
     }
     
@@ -119,7 +120,7 @@ class MoviesViewController: UIViewController, UITableViewDataSource, UITableView
                 if let responseDictionary = try! JSONSerialization.jsonObject(with: data, options:[]) as? NSDictionary {
                     
                     self.movies = responseDictionary["results"] as! [NSDictionary]
-                    
+                    self.filteredData = self.movies
                     self.tableView.reloadData()
                     refreshControl.endRefreshing()
                 }
@@ -147,5 +148,37 @@ class MoviesViewController: UIViewController, UITableViewDataSource, UITableView
         let detailViewController = segue.destination as! DetailsViewController
         detailViewController.movie = movie
         
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        
+        if searchText.isEmpty {
+            self.filteredData = self.movies
+        }
+        else {
+            if let movies = movies as? [[String: Any]] {
+                self.filteredData = []
+                for movie in movies{
+                    if let title = movie["title"] as? String {
+                        if (title.range(of: searchText, options: .caseInsensitive) != nil) {
+                            self.filteredData.append(movie as NSDictionary)
+                        }
+                    }
+                }
+            }
+        }
+        tableView.reloadData()
+    }
+    
+    func searchBarTextDidBeginEditing(_ searchBar: UISearchBar) {
+        searchBar.showsCancelButton = true
+    }
+    
+    func searchBarCancelButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.showsCancelButton = false
+        self.filteredData = self.movies
+        searchBar.text = ""
+        searchBar.resignFirstResponder()
+        tableView.reloadData()
     }
 }
