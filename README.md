@@ -32,7 +32,7 @@ The following **additional** features are implemented:
 
 Here's a walkthrough of implemented user stories:
 
-<img src='http://i.imgur.com/7p59szp.gif' title='Original App' width='' alt='Main App' />
+<img src='http://i.imgur.com/gIias8S.gif' title='Original App' width='' alt='Main App' />
 <img src='http://i.imgur.com/46wfApb.gif' title='Network Error' width='' alt='Network Error' />
 
 GIF created with [LiceCap](http://www.cockos.com/licecap/).
